@@ -33,8 +33,10 @@ def noZ(a):
 
 
 p1 = requests.get(url1)
-page1 = BeautifulSoup(p1.text)
-data1 = str(page1.p)[3:-4]
+#page1 = BeautifulSoup(p1.text)
+#data1 = str(page1.p)[3:-4]
+data1 = p1.text
+
 d1 = json.loads(data1)
 bigTable = pd.DataFrame(d1['elements'])
 bigTable = bigTable[['team', 'element_type', 'web_name', 'goals_scored', 'assists', 'bonus', 'event_points', 'total_points', 
@@ -52,9 +54,9 @@ bigTable['full_name'] = bigTable['first_name'] + ' ' + bigTable['second_name']
 bigTable.to_csv(Path('in/fpltable.csv'))
 
 p4 = requests.get(url4)
-page4 = BeautifulSoup(p4.text)
-data4 = str(page4.p)[3:-4]
-d4 = json.loads(data4)
+#page4 = BeautifulSoup(p4.text)
+#data4 = str(page4.p)[3:-4]
+d4 = json.loads(p4.text)
 Fixtures = pd.DataFrame(d4)
 Fixtures.to_csv(Path('in/fplfixtures.csv'))
 
@@ -75,9 +77,9 @@ Gameweeks = pd.DataFrame()
 for i in range(1,2*team_number - 1):
     url = "https://fantasy.premierleague.com/api/event/" + str(i) + "/live/"
     p = requests.get(url)
-    page = BeautifulSoup(p.text)
-    data = str(page.p)[3:-4]
-    d = json.loads(data)
+    #page = BeautifulSoup(p.text)
+    #data = str(page.p)[3:-4]
+    d = json.loads(p.text)
     nexTour = pd.DataFrame(d['elements'])
     
     if not nexTour.empty:
@@ -109,6 +111,7 @@ del Gameweeks['team_h']
 
 
 Gameweeks.to_csv(Path('in/fplgameweeks.csv'))
+Gameweeks
 
 
 
