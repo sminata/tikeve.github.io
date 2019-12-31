@@ -17,6 +17,13 @@ def DRDC(table):
     a.extend(Doubles(table.columns))
     return a
 
+def pd2int(a):
+    if a.empty:
+        return 0
+    elif len(a)==1:
+        return int(a)
+    else: return [int(i) for i in a]
+    
 if __name__=="__main__":
     print('Hello')
 
