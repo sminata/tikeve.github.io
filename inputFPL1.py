@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[11]:
+# In[86]:
 
 
 import constti
+import Brr_functions
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
@@ -88,7 +89,31 @@ def inputFPL():
             nt1 = pd.DataFrame(nexTour['stats'].tolist())
             nt1['id'] = nexTour['id']
             nt1['gameweek'] = i
-            nt1['fixture'] = [nexTour.at[i,'explain'][0]['fixture'] if not nexTour.at[i,'explain']==[]                               else '' for i in nexTour.index]
+            nt1['fixture'] = ''
+            for j in nexTour.index:
+                #if nexTour.at[j,'explain']==[]:
+                #    nt1.at[j, 'fixture'] = ''
+                if len(nexTour.at[j,'explain'])==1:
+                    nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][0]['fixture']
+                if len(nexTour.at[j,'explain'])==2:
+                    nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][0]['fixture']
+                    newline = nt1.loc[j].copy()
+                    newline['fixture'] = nexTour.at[j,'explain'][1]['fixture']
+                    #print(newline)
+                    nt1 = nt1.append(newline, ignore_index=True)
+                if len(nexTour.at[j,'explain'])==3:
+                    nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][0]['fixture']
+                    newline1 = nt1.loc[j].copy()
+                    newline2 = nt1.loc[j].copy()
+                    newline1['fixture'] = nexTour.at[j,'explain'][1]['fixture']
+                    newline2['fixture'] = nexTour.at[j,'explain'][2]['fixture']
+                    #print(newline1, newline2)
+                    nt1 = nt1.append(newline1, ignore_index=True)
+                    nt1 = nt1.append(newline2, ignore_index=True)
+                if len(nexTour.at[j,'explain'])>3:
+                    print('Too many matches in Gameweek')
+            #nt1['fixture'] = [nexTour.at[j,'explain'][0]['fixture'] if not nexTour.at[j,'explain']==[] \
+            #                  else '' for j in nexTour.index]
             #nt1.index = nt1['gameweek']*1000+nt1['id']
             Gameweeks = Gameweeks.append(nt1, ignore_index=True)
             print(i)
@@ -102,17 +127,8 @@ def inputFPL():
 
     Gameweeks['threat'] = pd.to_numeric(Gameweeks['threat'])
     Gameweeks['creativity'] = pd.to_numeric(Gameweeks['creativity'])
-
-    Gameweeks['team_a'] = [Fixtures[(Fixtures['event'] == Gameweeks.at[i,'gameweek']) &                                              ((Fixtures['team_a'] == Gameweeks.at[i,'team'])|                                              (Fixtures['team_h'] == Gameweeks.at[i,'team']))]['team_a']                                 for i in Gameweeks.index]
-
-
+    
     #Kill postponed matches lines
-
-    #li =[]
-    #for i in Gameweeks.index:
-    #    if Gameweeks.at[i,'team_a'].empty:
-    #        li.append(i)
-    #Gameweeks = Gameweeks.drop(li)
 
     li =[]
     for i in Gameweeks.index:
@@ -120,10 +136,12 @@ def inputFPL():
             li.append(i)
     Gameweeks = Gameweeks.drop(li)
 
+    Gameweeks['team_a'] = [Fixtures[(pd.to_numeric(Fixtures['id']) == pd.to_numeric(Gameweeks.at[i,'fixture'])) &                                              ((Fixtures['team_a'] == Gameweeks.at[i,'team'])|                                              (Fixtures['team_h'] == Gameweeks.at[i,'team']))]['team_a'].values                                 for i in Gameweeks.index]
 
-    Gameweeks['team_a'] = [int(Gameweeks.at[i,'team_a']) for i in Gameweeks.index]
+    Gameweeks['team_a'] = [int(Gameweeks.at[i,'team_a'][0]) if len(Gameweeks.at[i,'team_a'])==1 else '' for i in Gameweeks.index]
 
-    Gameweeks['team_h'] = [int(Fixtures[(Fixtures['event'] == Gameweeks.at[i,'gameweek']) &                                              ((Fixtures['team_a'] == Gameweeks.at[i,'team'])|                                              (Fixtures['team_h'] == Gameweeks.at[i,'team']))]['team_h'])                                 for i in Gameweeks.index]
+    Gameweeks['team_h'] = [Fixtures[(pd.to_numeric(Fixtures['id']) == pd.to_numeric(Gameweeks.at[i,'fixture'])) &                                              ((Fixtures['team_a'] == Gameweeks.at[i,'team'])|                                              (Fixtures['team_h'] == Gameweeks.at[i,'team']))]['team_h'].values                                 for i in Gameweeks.index]
+    Gameweeks['team_h'] = [int(Gameweeks.at[i,'team_h'][0]) if len(Gameweeks.at[i,'team_h'])==1 else '' for i in Gameweeks.index]
 
     Gameweeks['teamAgainst'] = [Gameweeks.at[i,'team_a'] if Gameweeks.at[i,'team'] == Gameweeks.at[i,'team_h']                                else Gameweeks.at[i,'team_h']                                for i in Gameweeks.index]
     Gameweeks['side'] = ['home' if Gameweeks.at[i,'team'] == Gameweeks.at[i,'team_h']                                else 'away'                                for i in Gameweeks.index]
@@ -137,5 +155,11 @@ def inputFPL():
 
 if __name__ == '__main__':
     d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers = inputFPL()
-    display(Gameweeks)
+    #display(Gameweeks[(Gameweeks['fixture']==237)][['teamAgainst', 'team']])
+
+
+# In[ ]:
+
+
+
 
