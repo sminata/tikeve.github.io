@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[77]:
+# In[1]:
 
 
 import constti
@@ -15,7 +15,7 @@ import numpy as np
 from pathlib import Path
 
 
-def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers):
+def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table):
     
     team_number = 20
     url1 = "https://fantasy.premierleague.com/api/bootstrap-static/"
@@ -59,7 +59,7 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
 
     Player_fixtures = pd.DataFrame()
     for j in range(lastGW,0,-1): 
-        Player_fixtures['GW'+str(j)] = [Gameweeks[(Gameweeks['id']==i)&                                    (Gameweeks['gameweek']==j)]['fixture'].values for i in bigTable['id']]
+        Player_fixtures['GW'+str(j)] = [Table[(Table['element']==i)&                                    (Table['round']==j)]['fixture'].values for i in bigTable['id']]
 
     #Matches
     TeamMatches = pd.DataFrame()
@@ -70,7 +70,7 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
     PlayerMatches['Team number'] = [bigTable[bigTable['id'] == i]['team'].sum() for i in players.keys()]
     PlayerMatches['Team'] = [teams[PlayerMatches.at[i,'Team number']] for i in range(len(players))]
     PlayerMatches['Team games'] = [TeamMatches.at[PlayerMatches.at[i,'Team number']-1,'Matches'] for i in PlayerMatches.index]
-    PlayerMatches['Played'] = [len(Gameweeks[(Gameweeks['id']==i)&(Gameweeks['minutes']>0)])                             for i in PlayerMatches['id']]
+    PlayerMatches['Played'] = [len(Table[(Table['element']==i)&(Table['minutes']>0)])                             for i in PlayerMatches['id']]
 
 
     #Team tables
@@ -88,10 +88,11 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
         TeamThreat['Threat GW'+str(j)] = [[] for _ in range(team_number)]
         for i in range(team_number):
             for k in range(len(Team_fixtures.at[i, 'GW'+str(j)])):
-                TeamThreat.at[i,'Threat GW'+str(j)].append(Gameweeks[(Gameweeks['fixture']==Team_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Gameweeks['team']==i+1)]['threat'].sum())
+                TeamThreat.at[i,'Threat GW'+str(j)].append(Table[(Table['fixture']==Team_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Table['team']==i+1)]['threat'].sum())
 
 
-    TeamThreat['Threat av'] = [Gameweeks[Gameweeks['team']==i]['threat'].sum() for i in range(1,team_number+1)]         /noZ(TeamMatches['Matches'])
+    TeamThreat['Threat av'] = [Table[Table['team']==i]['threat'].sum() for i in range(1,team_number+1)]         /noZ(TeamMatches['Matches'])
+    TeamThreat.sort_values('Threat av', ascending = False, inplace = True)
 
     print(1)
     #2. Creating  a table with average creativity and GW creativities for teams
@@ -106,10 +107,10 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
         TeamCreativity['Creativity GW'+str(j)] = [[] for _ in range(team_number)]
         for i in range(team_number):
             for k in range(len(Team_fixtures.at[i, 'GW'+str(j)])):
-                TeamCreativity.at[i,'Creativity GW'+str(j)].append(Gameweeks[(Gameweeks['fixture']==Team_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Gameweeks['team']==i+1)]['creativity'].sum())
+                TeamCreativity.at[i,'Creativity GW'+str(j)].append(Table[(Table['fixture']==Team_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Table['team']==i+1)]['creativity'].sum())
 
 
-    TeamCreativity['Creativity av'] = [Gameweeks[Gameweeks['team']==i]['creativity'].sum() for i in range(1,team_number+1)]         /noZ(TeamMatches['Matches'])
+    TeamCreativity['Creativity av'] = [Table[Table['team']==i]['creativity'].sum() for i in range(1,team_number+1)]         /noZ(TeamMatches['Matches'])
     print(2)
     #3. Creating  a table with average threat allowed by teams and GW threat allowed
 
@@ -123,10 +124,10 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
         TableDefence['Threat allowed GW'+str(j)] = [[] for _ in range(team_number)]
         for i in range(team_number):
             for k in range(len(Team_fixtures.at[i, 'GW'+str(j)])):
-                TableDefence.at[i,'Threat allowed GW'+str(j)].append(Gameweeks[(Gameweeks['fixture']==                     Team_fixtures.at[i, 'GW'+str(j)][k])&(Gameweeks['teamAgainst']==i+1)]['threat'].sum())
+                TableDefence.at[i,'Threat allowed GW'+str(j)].append(Table[(Table['fixture']==                     Team_fixtures.at[i, 'GW'+str(j)][k])&(Table['opponent_team']==i+1)]['threat'].sum())
 
 
-    TableDefence['Threat allowed av'] = [Gameweeks[Gameweeks['teamAgainst']==i]['threat'].sum() for i in range(1,team_number+1)]             /noZ(TeamMatches['Matches'])
+    TableDefence['Threat allowed av'] = [Table[Table['opponent_team']==i]['threat'].sum() for i in range(1,team_number+1)]             /noZ(TeamMatches['Matches'])
 
     threatAllowedAv = TableDefence['Threat allowed av'].mean()
     print(3)
@@ -231,7 +232,7 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
         PlayerThreat['Threat GW'+str(j)] = [[] for _ in range(len(bigTable))]
         for i in range(len(bigTable)):
             for k in range(len(Player_fixtures.at[i, 'GW'+str(j)])):
-                PlayerThreat.at[i,'Threat GW'+str(j)].append(Gameweeks[(Gameweeks['fixture']==Player_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Gameweeks['id']==PlayerThreat.at[i,'id'])]['threat'].sum())
+                PlayerThreat.at[i,'Threat GW'+str(j)].append(Table[(Table['fixture']==Player_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Table['element']==PlayerThreat.at[i,'id'])]['threat'].sum())
                 PlayerThreat.at[i,'Threat per game'] = PlayerThreat.at[i,'Threat per game'] +                    PlayerThreat.at[i,'Threat GW'+str(j)][k]
 
 
@@ -251,7 +252,7 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
         PlayerCreativity['Creativity GW'+str(j)] = [[] for _ in range(len(bigTable))]
         for i in range(len(bigTable)):
             for k in range(len(Player_fixtures.at[i, 'GW'+str(j)])):
-                PlayerCreativity.at[i,'Creativity GW'+str(j)].append(Gameweeks[(Gameweeks['fixture']==                                            Player_fixtures.at[i, 'GW'+str(j)][k])&                                            (Gameweeks['id']==PlayerCreativity.at[i,'id'])]['creativity'].sum())
+                PlayerCreativity.at[i,'Creativity GW'+str(j)].append(Table[(Table['fixture']==                                            Player_fixtures.at[i, 'GW'+str(j)][k])&                                            (Table['element']==PlayerCreativity.at[i,'id'])]['creativity'].sum())
                 PlayerCreativity.at[i,'Creativity per game'] = PlayerCreativity.at[i,'Creativity per game'] +                    PlayerCreativity.at[i,'Creativity GW'+str(j)][k]
 
 
@@ -272,9 +273,10 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
         PlayerThreatAd['Threat GW'+str(j) + 'adj'] = [[] for _ in range(len(bigTable))]
         for i in range(len(bigTable)):
             for k in range(len(Player_fixtures.at[i, 'GW'+str(j)])):
-
+                #If player's team is away
                 if toint(Fixtures[Fixtures['id']==Player_fixtures.at[i, 'GW'+str(j)][k]]['team_a'].sum())==                    PlayerThreatAd.at[i,'Team number']:
                     PlayerThreatAd.at[i,'Threat GW'+str(j) + 'adj'].append(PlayerThreat.at[i,'Threat GW'+str(j)][k]                        *threatAllowedAv/TableDefence.at[toint(Fixtures[Fixtures['id']==                        Player_fixtures.at[i, 'GW'+str(j)][k]]['team_h'].sum()-1),'Threat allowed av'])
+                #If home
                 else:
                       PlayerThreatAd.at[i,'Threat GW'+str(j) + 'adj'].append(PlayerThreat.at[i,'Threat GW'+str(j)][k]
                         *threatAllowedAv/TableDefence.at[toint(Fixtures[Fixtures['id']==\
@@ -285,6 +287,7 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
 
     PlayerThreatAd['Threat per fixture adj'] = PlayerThreatAd['Threat per game adj']/noZ(PlayerMatches['Team games'])
     PlayerThreatAd['Threat per game adj'] = PlayerThreatAd['Threat per game adj']/noZ(PlayerMatches['Played'])
+    
     print(11)
 
     #4 PLayers Creativity Adjusted
@@ -389,9 +392,9 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
 
 if __name__=='__main__':
     
-    d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers = inputFPL1.inputFPL()
+    d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table = inputFPL1.inputFPL()
     
-    TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd,     TableTeams, PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd     = outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers)
+    TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd,     TableTeams, PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd     = outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table)
     
     display(TeamThreat)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[86]:
+# In[1]:
 
 
 import constti
@@ -19,7 +19,8 @@ def inputFPL():
     url2 = "https://fantasy.premierleague.com/api/entry/698498/history/"
     url3 = "https://fantasy.premierleague.com/api/event/6/live/"
     url4 = "https://fantasy.premierleague.com/api/fixtures"
-
+    url5 = 'https://fantasy.premierleague.com/api/element-summary/191/'
+    
     #Kills unfinished matches
     def is_finished(n):
         if n=='':
@@ -28,9 +29,14 @@ def inputFPL():
             a = Fixtures[Fixtures['id']==n]['finished']
             #print(a)
             return a.bool()
-        
-        
-    p1 = requests.get(url1)
+    
+    #p1 = requests.get(url1)
+    for j in range(6):
+        try:
+            p1 = requests.get(url1)
+            break
+        except Exception as e:
+            print(e)    
     #page1 = BeautifulSoup(p1.text)
     #data1 = str(page1.p)[3:-4]
     data1 = p1.text
@@ -50,8 +56,18 @@ def inputFPL():
                    'ep_this', 'ep_next', 'first_name', 'second_name', 'team_code', 'id', 'photo', 'special', 'squad_number', 'code']]
     bigTable['full_name'] = bigTable['first_name'] + ' ' + bigTable['second_name']
     bigTable.to_csv(Path('in/fpltable.csv'))
+    
+    teams = dict(zip(pd.DataFrame(d1['teams'])['id'],pd.DataFrame(d1['teams'])['name']))
+    players = dict(zip(bigTable['id'],bigTable['full_name']))
+    teamplayers = dict(zip(bigTable['id'],bigTable['team']))
 
-    p4 = requests.get(url4)
+    #p4 = requests.get(url4)
+    for j in range(6):
+        try:
+            p4 = requests.get(url4)
+            break
+        except Exception as e:
+            print(e)
     #page4 = BeautifulSoup(p4.text)
     #data4 = str(page4.p)[3:-4]
     d4 = json.loads(p4.text)
@@ -71,15 +87,37 @@ def inputFPL():
         lastGW = int(Fixtures.at[lastr,'event'])
 
 
-
-
+        
+    
+    Table = pd.DataFrame()
+    for i in bigTable['id']:
+        url = 'https://fantasy.premierleague.com/api/element-summary/'+str(i)+'/'
+        for j in range(6):
+            try:
+                p = requests.get(url)
+                break
+            except Exception as e:
+                print(e)
+        d = json.loads(p.text)
+        dd = pd.DataFrame(d['history'])
+        Table = Table.append(dd, ignore_index=True)
+    Table.to_csv(Path('in/TheTable.csv'))
+    Table['threat'] = pd.to_numeric(Table['threat'])
+    Table['creativity'] = pd.to_numeric(Table['creativity'])
+    Table['team'] = [teamplayers[Table.at[i,'element']] for i in Table.index]
 
 
 
     Gameweeks = pd.DataFrame()
     for i in range(1,2*team_number - 1):
         url = "https://fantasy.premierleague.com/api/event/" + str(i) + "/live/"
-        p = requests.get(url)
+        #p = requests.get(url)
+        for j in range(6):
+            try:
+                p = requests.get(url)
+                break
+            except Exception as e:
+                print(e)
         #page = BeautifulSoup(p.text)
         #data = str(page.p)[3:-4]
         d = json.loads(p.text)
@@ -96,17 +134,17 @@ def inputFPL():
                 if len(nexTour.at[j,'explain'])==1:
                     nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][0]['fixture']
                 if len(nexTour.at[j,'explain'])==2:
-                    nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][0]['fixture']
+                    nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][1]['fixture']
                     newline = nt1.loc[j].copy()
-                    newline['fixture'] = nexTour.at[j,'explain'][1]['fixture']
+                    newline['fixture'] = nexTour.at[j,'explain'][0]['fixture']
                     #print(newline)
                     nt1 = nt1.append(newline, ignore_index=True)
                 if len(nexTour.at[j,'explain'])==3:
-                    nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][0]['fixture']
+                    nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][2]['fixture']
                     newline1 = nt1.loc[j].copy()
                     newline2 = nt1.loc[j].copy()
                     newline1['fixture'] = nexTour.at[j,'explain'][1]['fixture']
-                    newline2['fixture'] = nexTour.at[j,'explain'][2]['fixture']
+                    newline2['fixture'] = nexTour.at[j,'explain'][0]['fixture']
                     #print(newline1, newline2)
                     nt1 = nt1.append(newline1, ignore_index=True)
                     nt1 = nt1.append(newline2, ignore_index=True)
@@ -117,11 +155,6 @@ def inputFPL():
             #nt1.index = nt1['gameweek']*1000+nt1['id']
             Gameweeks = Gameweeks.append(nt1, ignore_index=True)
             print(i)
-
-
-    teams = dict(zip(pd.DataFrame(d1['teams'])['id'],pd.DataFrame(d1['teams'])['name']))
-    players = dict(zip(bigTable['id'],bigTable['full_name']))
-    teamplayers = dict(zip(bigTable['id'],bigTable['team']))
 
     Gameweeks['team'] = [teamplayers[i] for i in Gameweeks['id']]
 
@@ -151,11 +184,11 @@ def inputFPL():
 
 
     Gameweeks.to_csv(Path('in/fplgameweeks.csv'))
-    return d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers
+    return d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table
 
 if __name__ == '__main__':
-    d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers = inputFPL()
-    #display(Gameweeks[(Gameweeks['fixture']==237)][['teamAgainst', 'team']])
+    d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table = inputFPL()
+    display(Table)
 
 
 # In[ ]:
