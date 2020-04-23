@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[5]:
 
 
 import constti
@@ -13,15 +13,31 @@ import pandas as pd
 import json
 import numpy as np
 from pathlib import Path
+from inputFPL1 import inputFPL
 
-
-def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table):
+#Table, Fixtures, Teams, Players = inputFPL()
+def outputFPL():
     
-    team_number = 20
-    url1 = "https://fantasy.premierleague.com/api/bootstrap-static/"
-    url2 = "https://fantasy.premierleague.com/api/entry/698498/history/"
-    url3 = "https://fantasy.premierleague.com/api/event/6/live/"
-    url4 = "https://fantasy.premierleague.com/api/fixtures"
+    Table = pd.read_csv('in/Table.csv')
+    Fixtures = pd.read_csv('in/Fixtures.csv')
+    Teams = pd.read_csv('in/Teams.csv')
+    Players = pd.read_csv('in/Players.csv')
+    
+    #Teams in Premier League
+    team_number = len(Teams)
+    
+    #Calculating last gameweek with at least one game played
+    firstr = len(Fixtures)+1
+    lastr = 0
+    for i in range(len(Fixtures)):
+        if Fixtures.at[i,'finished']==True:
+            firstr = min(firstr, i)
+            lastr = i
+    if firstr < len(Fixtures)+1:
+        lastGW = int(Fixtures.at[lastr,'event'])
+    else: lastGW = 0
+    if lastr == len(Fixtures):
+        lastGW = int(Fixtures.at[lastr,'event'])
 
     #NaNs to zeros
     def toint(a):
@@ -59,18 +75,7 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
 
     Player_fixtures = pd.DataFrame()
     for j in range(lastGW,0,-1): 
-        Player_fixtures['GW'+str(j)] = [Table[(Table['element']==i)&                                    (Table['round']==j)]['fixture'].values for i in bigTable['id']]
-
-    #Matches
-    TeamMatches = pd.DataFrame()
-    TeamMatches['Matches'] = [len(Fixtures[Fixtures['finished']&((Fixtures['team_a']==i)|(Fixtures['team_h']==i))])                                   for i in range(1,team_number+1)]
-
-    PlayerMatches = pd.DataFrame()
-    PlayerMatches['id'] = bigTable['id']
-    PlayerMatches['Team number'] = [bigTable[bigTable['id'] == i]['team'].sum() for i in players.keys()]
-    PlayerMatches['Team'] = [teams[PlayerMatches.at[i,'Team number']] for i in range(len(players))]
-    PlayerMatches['Team games'] = [TeamMatches.at[PlayerMatches.at[i,'Team number']-1,'Matches'] for i in PlayerMatches.index]
-    PlayerMatches['Played'] = [len(Table[(Table['element']==i)&(Table['minutes']>0)])                             for i in PlayerMatches['id']]
+        Player_fixtures['GW'+str(j)] = [Table[(Table['element']==i)&                                    (Table['round']==j)]['fixture'].values for i in Players['id']]
 
 
     #Team tables
@@ -78,11 +83,8 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
     print(0)
     #1. Creating  a table with average threat and GW threats for teams
 
-    TeamThreat = pd.DataFrame()
-    TeamThreat['id'] = pd.DataFrame(d1['teams'])['id']
-    TeamThreat['Team'] = pd.DataFrame(d1['teams'])['name']
-    TeamThreat['Threat av'] = np.zeros(len(TeamThreat))
-    TeamThreat['Matches'] = TeamMatches['Matches']
+    TeamThreat = Teams.copy()
+    TeamThreat.columns = ['id', 'Teams', 'Threat av', 'Matches']
 
     for j in range(lastGW,0,-1):
         TeamThreat['Threat GW'+str(j)] = [[] for _ in range(team_number)]
@@ -91,17 +93,14 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 TeamThreat.at[i,'Threat GW'+str(j)].append(Table[(Table['fixture']==Team_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Table['team']==i+1)]['threat'].sum())
 
 
-    TeamThreat['Threat av'] = [Table[Table['team']==i]['threat'].sum() for i in range(1,team_number+1)]         /noZ(TeamMatches['Matches'])
+    TeamThreat['Threat av'] = [Table[Table['team']==i]['threat'].sum() for i in range(1,team_number+1)]         /noZ(Teams['Matches'])
     TeamThreat.sort_values('Threat av', ascending = False, inplace = True)
 
     print(1)
     #2. Creating  a table with average creativity and GW creativities for teams
 
-    TeamCreativity = pd.DataFrame()
-    TeamCreativity['id'] = pd.DataFrame(d1['teams'])['id']
-    TeamCreativity['Team'] = pd.DataFrame(d1['teams'])['name']
-    TeamCreativity['Creativity av'] = np.zeros(len(TeamCreativity))
-    TeamCreativity['Matches'] = TeamMatches['Matches']
+    TeamCreativity = Teams.copy()
+    TeamCreativity.columns = ['id', 'Teams', 'Creativity av', 'Matches']
 
     for j in range(lastGW,0,-1):
         TeamCreativity['Creativity GW'+str(j)] = [[] for _ in range(team_number)]
@@ -110,15 +109,12 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 TeamCreativity.at[i,'Creativity GW'+str(j)].append(Table[(Table['fixture']==Team_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Table['team']==i+1)]['creativity'].sum())
 
 
-    TeamCreativity['Creativity av'] = [Table[Table['team']==i]['creativity'].sum() for i in range(1,team_number+1)]         /noZ(TeamMatches['Matches'])
+    TeamCreativity['Creativity av'] = [Table[Table['team']==i]['creativity'].sum() for i in range(1,team_number+1)]         /noZ(Teams['Matches'])
     print(2)
     #3. Creating  a table with average threat allowed by teams and GW threat allowed
 
-    TableDefence = pd.DataFrame()
-    TableDefence['id'] = pd.DataFrame(d1['teams'])['id']
-    TableDefence['Team'] = pd.DataFrame(d1['teams'])['name']
-    TableDefence['Threat allowed av'] = np.zeros(len(TableDefence))
-    TableDefence['Matches'] = TeamMatches['Matches']
+    TableDefence = Teams.copy()
+    TableDefence.columns = ['id', 'Teams', 'Threat allowed av', 'Matches']
 
     for j in range(lastGW,0,-1):
         TableDefence['Threat allowed GW'+str(j)] = [[] for _ in range(team_number)]
@@ -127,17 +123,14 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 TableDefence.at[i,'Threat allowed GW'+str(j)].append(Table[(Table['fixture']==                     Team_fixtures.at[i, 'GW'+str(j)][k])&(Table['opponent_team']==i+1)]['threat'].sum())
 
 
-    TableDefence['Threat allowed av'] = [Table[Table['opponent_team']==i]['threat'].sum() for i in range(1,team_number+1)]             /noZ(TeamMatches['Matches'])
+    TableDefence['Threat allowed av'] = [Table[Table['opponent_team']==i]['threat'].sum() for i in range(1,team_number+1)]             /noZ(Teams['Matches'])
 
     threatAllowedAv = TableDefence['Threat allowed av'].mean()
     print(3)
     #4. Creating  a table with average adjusted threat and GW threats adj for teams
 
-    TeamThreatAd = pd.DataFrame()
-    TeamThreatAd['id'] = pd.DataFrame(d1['teams'])['id']
-    TeamThreatAd['Team'] = pd.DataFrame(d1['teams'])['name']
-    TeamThreatAd['Threat av adj'] = np.zeros(len(TeamThreatAd))
-    TeamThreatAd['Matches'] = TeamMatches['Matches']
+    TeamThreatAd = Teams.copy()
+    TeamThreatAd.columns = ['id', 'Teams', 'Threat av adj', 'Matches']
 
     for j in range(lastGW,0,-1):
         TeamThreatAd['Threat GW'+str(j)+' adj'] = [[] for _ in range(team_number)]
@@ -151,15 +144,12 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 TeamThreatAd.at[i,'Threat av adj'] = TeamThreatAd.at[i,'Threat av adj']  +                     TeamThreatAd.at[i,'Threat GW'+str(j)+' adj'][k]
 
 
-    TeamThreatAd['Threat av adj'] = TeamThreatAd['Threat av adj']/noZ(TeamMatches['Matches'])
+    TeamThreatAd['Threat av adj'] = TeamThreatAd['Threat av adj']/noZ(Teams['Matches'])
     print(4)
     #5. Creating  a table with average adjusted creativity and GW creativities adj for teams
 
-    TeamCreativityAd = pd.DataFrame()
-    TeamCreativityAd['id'] = pd.DataFrame(d1['teams'])['id']
-    TeamCreativityAd['Team'] = pd.DataFrame(d1['teams'])['name']
-    TeamCreativityAd['Creativity av adj'] = np.zeros(len(TeamCreativityAd))
-    TeamCreativityAd['Matches'] = TeamMatches['Matches']
+    TeamCreativityAd = Teams.copy()
+    TeamCreativityAd.columns = ['id', 'Teams', 'Creativity av adj', 'Matches']
 
     for j in range(lastGW,0,-1):
         TeamCreativityAd['Creativity GW'+str(j)+' adj'] = [[] for _ in range(team_number)]
@@ -173,15 +163,12 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 TeamCreativityAd.at[i,'Creativity av adj'] = TeamCreativityAd.at[i,'Creativity av adj']  +                     TeamCreativityAd.at[i,'Creativity GW'+str(j)+' adj'][k]
 
 
-    TeamCreativityAd['Creativity av adj'] = TeamCreativityAd['Creativity av adj']/noZ(TeamMatches['Matches'])
+    TeamCreativityAd['Creativity av adj'] = TeamCreativityAd['Creativity av adj']/noZ(Teams['Matches'])
     print(5)
     #6. Creating  a table with average threat allowed adjusted by teams and GW threat allowed adjusted
 
-    TableDefenceAd = pd.DataFrame()
-    TableDefenceAd['id'] = pd.DataFrame(d1['teams'])['id']
-    TableDefenceAd['Team'] = pd.DataFrame(d1['teams'])['name']
-    TableDefenceAd['Threat allowed av adj'] = np.zeros(len(TableDefenceAd))
-    TableDefenceAd['Matches'] = TeamMatches['Matches']
+    TableDefenceAd = Teams.copy()
+    TableDefenceAd.columns = ['id', 'Teams', 'Threat allowed av adj', 'Matches']
 
     for j in range(lastGW,0,-1):
         TableDefenceAd['Threat allowed GW'+str(j)+' adj'] = [[] for _ in range(team_number)]
@@ -195,7 +182,7 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 TableDefenceAd.at[i,'Threat allowed av adj'] = TableDefenceAd.at[i,'Threat allowed av adj']  +                     TableDefenceAd.at[i,'Threat allowed GW'+str(j)+' adj'][k]
 
 
-    TableDefenceAd['Threat allowed av adj'] = TableDefenceAd['Threat allowed av adj']/noZ(TeamMatches['Matches'])
+    TableDefenceAd['Threat allowed av adj'] = TableDefenceAd['Threat allowed av adj']/noZ(Teams['Matches'])
 
     print(6)
 
@@ -203,8 +190,8 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
     #Total Team Table
 
     TableTeams = pd.DataFrame()
-    TableTeams['id'] = pd.DataFrame(d1['teams'])['id']
-    TableTeams['Team'] = pd.DataFrame(d1['teams'])['name']
+    TableTeams['id'] = Teams['id']
+    TableTeams['Team'] = Teams['Teams']
 
     TableTeams['Threat adjusted'] = TeamThreatAd['Threat av adj']
     TableTeams['Threat'] = TeamThreat['Threat av']
@@ -221,57 +208,47 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
 
     #1 Players Threat
 
-    PlayerThreat = pd.DataFrame()
-    PlayerThreat['id'] = bigTable['id']
-    PlayerThreat['Name'] = bigTable['full_name']
-    PlayerThreat['Team'] = PlayerMatches['Team']
-    PlayerThreat['Threat per fixture'] = np.zeros(len(players))
-    PlayerThreat['Threat per game'] = np.zeros(len(players))
+    PlayerThreat = Players.copy()
+    PlayerThreat['Threat per fixture'] = np.zeros(len(Players))
+    PlayerThreat['Threat per game'] = np.zeros(len(Players))
 
     for j in range(lastGW,0,-1):
-        PlayerThreat['Threat GW'+str(j)] = [[] for _ in range(len(bigTable))]
-        for i in range(len(bigTable)):
+        PlayerThreat['Threat GW'+str(j)] = [[] for _ in range(len(Players))]
+        for i in range(len(Players)):
             for k in range(len(Player_fixtures.at[i, 'GW'+str(j)])):
                 PlayerThreat.at[i,'Threat GW'+str(j)].append(Table[(Table['fixture']==Player_fixtures.at[i, 'GW'+str(j)][k])&                                                               (Table['element']==PlayerThreat.at[i,'id'])]['threat'].sum())
                 PlayerThreat.at[i,'Threat per game'] = PlayerThreat.at[i,'Threat per game'] +                    PlayerThreat.at[i,'Threat GW'+str(j)][k]
 
 
-    PlayerThreat['Threat per fixture'] = PlayerThreat['Threat per game']/noZ(PlayerMatches['Team games'])
-    PlayerThreat['Threat per game'] = PlayerThreat['Threat per game']/noZ(PlayerMatches['Played'])
+    PlayerThreat['Threat per fixture'] = PlayerThreat['Threat per game']/noZ(Players['Team games'])
+    PlayerThreat['Threat per game'] = PlayerThreat['Threat per game']/noZ(Players['Played'])
     print(9)
     #2 Players Creativity
 
-    PlayerCreativity = pd.DataFrame()
-    PlayerCreativity['id'] = bigTable['id']
-    PlayerCreativity['Name'] = bigTable['full_name']
-    PlayerCreativity['Team'] = PlayerMatches['Team']
-    PlayerCreativity['Creativity per fixture'] = np.zeros(len(players))
-    PlayerCreativity['Creativity per game'] = np.zeros(len(players))
+    PlayerCreativity = Players.copy()
+    PlayerCreativity['Creativity per fixture'] = np.zeros(len(Players))
+    PlayerCreativity['Creativity per game'] = np.zeros(len(Players))
 
     for j in range(lastGW,0,-1):
-        PlayerCreativity['Creativity GW'+str(j)] = [[] for _ in range(len(bigTable))]
-        for i in range(len(bigTable)):
+        PlayerCreativity['Creativity GW'+str(j)] = [[] for _ in range(len(Players))]
+        for i in range(len(Players)):
             for k in range(len(Player_fixtures.at[i, 'GW'+str(j)])):
                 PlayerCreativity.at[i,'Creativity GW'+str(j)].append(Table[(Table['fixture']==                                            Player_fixtures.at[i, 'GW'+str(j)][k])&                                            (Table['element']==PlayerCreativity.at[i,'id'])]['creativity'].sum())
                 PlayerCreativity.at[i,'Creativity per game'] = PlayerCreativity.at[i,'Creativity per game'] +                    PlayerCreativity.at[i,'Creativity GW'+str(j)][k]
 
 
-    PlayerCreativity['Creativity per fixture'] = PlayerCreativity['Creativity per game']/noZ(PlayerMatches['Team games'])
-    PlayerCreativity['Creativity per game'] = PlayerCreativity['Creativity per game']/noZ(PlayerMatches['Played'])
+    PlayerCreativity['Creativity per fixture'] = PlayerCreativity['Creativity per game']/noZ(Players['Team games'])
+    PlayerCreativity['Creativity per game'] = PlayerCreativity['Creativity per game']/noZ(Players['Played'])
     print(10)
     #3 Players Threat Adjusted
 
-    PlayerThreatAd = pd.DataFrame()
-    PlayerThreatAd['id'] = bigTable['id']
-    PlayerThreatAd['Name'] = bigTable['full_name']
-    PlayerThreatAd['Team number'] = PlayerMatches['Team number']
-    PlayerThreatAd['Team'] = PlayerMatches['Team']
-    PlayerThreatAd['Threat per fixture adj'] = np.zeros(len(players))
-    PlayerThreatAd['Threat per game adj'] = np.zeros(len(players))
+    PlayerThreatAd = Players.copy()
+    PlayerThreatAd['Threat per fixture adj'] = np.zeros(len(Players))
+    PlayerThreatAd['Threat per game adj'] = np.zeros(len(Players))
 
     for j in range(lastGW,0,-1):
-        PlayerThreatAd['Threat GW'+str(j) + 'adj'] = [[] for _ in range(len(bigTable))]
-        for i in range(len(bigTable)):
+        PlayerThreatAd['Threat GW'+str(j) + 'adj'] = [[] for _ in range(len(Players))]
+        for i in range(len(Players)):
             for k in range(len(Player_fixtures.at[i, 'GW'+str(j)])):
                 #If player's team is away
                 if toint(Fixtures[Fixtures['id']==Player_fixtures.at[i, 'GW'+str(j)][k]]['team_a'].sum())==                    PlayerThreatAd.at[i,'Team number']:
@@ -285,24 +262,20 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 PlayerThreatAd.at[i,'Threat per game adj'] = PlayerThreatAd.at[i,'Threat per game adj'] +                    PlayerThreatAd.at[i,'Threat GW'+str(j) + 'adj'][k]
 
 
-    PlayerThreatAd['Threat per fixture adj'] = PlayerThreatAd['Threat per game adj']/noZ(PlayerMatches['Team games'])
-    PlayerThreatAd['Threat per game adj'] = PlayerThreatAd['Threat per game adj']/noZ(PlayerMatches['Played'])
+    PlayerThreatAd['Threat per fixture adj'] = PlayerThreatAd['Threat per game adj']/noZ(Players['Team games'])
+    PlayerThreatAd['Threat per game adj'] = PlayerThreatAd['Threat per game adj']/noZ(Players['Played'])
     
     print(11)
 
     #4 PLayers Creativity Adjusted
 
-    PlayerCreativityAd = pd.DataFrame()
-    PlayerCreativityAd['id'] = bigTable['id']
-    PlayerCreativityAd['Name'] = bigTable['full_name']
-    PlayerCreativityAd['Team number'] = PlayerMatches['Team number']
-    PlayerCreativityAd['Team'] = PlayerMatches['Team']
-    PlayerCreativityAd['Creativity per fixture adj'] = np.zeros(len(players))
-    PlayerCreativityAd['Creativity per game adj'] = np.zeros(len(players))
+    PlayerCreativityAd = Players.copy()
+    PlayerCreativityAd['Creativity per fixture adj'] = np.zeros(len(Players))
+    PlayerCreativityAd['Creativity per game adj'] = np.zeros(len(Players))
 
     for j in range(lastGW,0,-1):
-        PlayerCreativityAd['Creativity GW'+str(j) + 'adj'] = [[] for _ in range(len(bigTable))]
-        for i in range(len(bigTable)):
+        PlayerCreativityAd['Creativity GW'+str(j) + 'adj'] = [[] for _ in range(len(Players))]
+        for i in range(len(Players)):
             for k in range(len(Player_fixtures.at[i, 'GW'+str(j)])):
 
                 if toint(Fixtures[Fixtures['id']==Player_fixtures.at[i, 'GW'+str(j)][k]]['team_a'].sum())==                    PlayerCreativityAd.at[i,'Team number']:
@@ -313,8 +286,8 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
                 PlayerCreativityAd.at[i,'Creativity per game adj'] = PlayerCreativityAd.at[i,'Creativity per game adj'] +                    PlayerCreativityAd.at[i,'Creativity GW'+str(j) + 'adj'][k]
 
 
-    PlayerCreativityAd['Creativity per fixture adj'] = PlayerCreativityAd['Creativity per game adj']/    noZ(PlayerMatches['Team games'])
-    PlayerCreativityAd['Creativity per game adj'] = PlayerCreativityAd['Creativity per game adj']/noZ(PlayerMatches['Played'])
+    PlayerCreativityAd['Creativity per fixture adj'] = PlayerCreativityAd['Creativity per game adj']/noZ(Players['Team games'])
+    PlayerCreativityAd['Creativity per game adj'] = PlayerCreativityAd['Creativity per game adj']/noZ(Players['Played'])
     print(12)
 
 
@@ -363,38 +336,40 @@ def outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,te
 
     del PlayerThreat['id']
     PlayerThreat.sort_values('Threat per fixture', ascending = False, inplace = True)
-    PlayerThreat.index = np.arange(1, len(players) + 1)
+    PlayerThreat.index = np.arange(1, len(Players) + 1)
     PlayerThreat = Brr_functions.no_lists(PlayerThreat)
     PlayerThreat.to_csv(Path('out/PlayerThreat.csv'))
 
     del PlayerCreativity['id']
     PlayerCreativity.sort_values('Creativity per fixture', ascending = False, inplace = True)
-    PlayerCreativity.index = np.arange(1, len(players) + 1)
+    PlayerCreativity.index = np.arange(1, len(Players) + 1)
     PlayerCreativity = Brr_functions.no_lists(PlayerCreativity)
     PlayerCreativity.to_csv(Path('out/PlayerCreativity.csv'))
 
     del PlayerThreatAd['id']
     del PlayerThreatAd['Team number']
     PlayerThreatAd.sort_values('Threat per fixture adj', ascending = False, inplace = True)
-    PlayerThreatAd.index = np.arange(1, len(players) + 1)
+    PlayerThreatAd.index = np.arange(1, len(Players) + 1)
     PlayerThreatAd = Brr_functions.no_lists(PlayerThreatAd)
     PlayerThreatAd.to_csv(Path('out/PlayerThreatAd.csv'))
 
     del PlayerCreativityAd['id']
     del PlayerCreativityAd['Team number']
     PlayerCreativityAd.sort_values('Creativity per fixture adj', ascending = False, inplace = True)
-    PlayerCreativityAd.index = np.arange(1, len(players) + 1)
+    PlayerCreativityAd.index = np.arange(1, len(Players) + 1)
     PlayerCreativityAd = Brr_functions.no_lists(PlayerCreativityAd)
     PlayerCreativityAd.to_csv(Path('out/PlayerCreativityAd.csv'))
     
-    return TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd,             TableTeams, PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd
+    return TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd, TableTeams,                PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd
+
+if __name__ == '__main__':
+    #Table, Fixtures, Teams, Players = inputFPL()
+    TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd, TableTeams,                PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd = outputFPL()
+    display(PlayerThreatAd)
 
 
-if __name__=='__main__':
-    
-    d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table = inputFPL1.inputFPL()
-    
-    TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd,     TableTeams, PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd     = outputFPL(d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table)
-    
-    display(TeamThreat)
+# In[ ]:
+
+
+
 

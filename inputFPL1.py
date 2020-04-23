@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[6]:
 
 
 import constti
@@ -14,7 +14,7 @@ import numpy as np
 from pathlib import Path
 
 def inputFPL():
-    team_number = 20
+    
     url1 = "https://fantasy.premierleague.com/api/bootstrap-static/"
     url2 = "https://fantasy.premierleague.com/api/entry/698498/history/"
     url3 = "https://fantasy.premierleague.com/api/event/6/live/"
@@ -27,18 +27,16 @@ def inputFPL():
             return False
         else:
             a = Fixtures[Fixtures['id']==n]['finished']
-            #print(a)
             return a.bool()
     
-    #p1 = requests.get(url1)
+
     for j in range(6):
         try:
             p1 = requests.get(url1)
             break
         except Exception as e:
             print(e)    
-    #page1 = BeautifulSoup(p1.text)
-    #data1 = str(page1.p)[3:-4]
+
     data1 = p1.text
     
     d1 = json.loads(data1)
@@ -55,24 +53,22 @@ def inputFPL():
                    'chance_of_playing_this_round', 'chance_of_playing_next_round', 'news_added', 'news', 'status', 
                    'ep_this', 'ep_next', 'first_name', 'second_name', 'team_code', 'id', 'photo', 'special', 'squad_number', 'code']]
     bigTable['full_name'] = bigTable['first_name'] + ' ' + bigTable['second_name']
-    bigTable.to_csv(Path('in/fpltable.csv'))
+    #bigTable.to_csv(Path('in/fpltable.csv'))
     
     teams = dict(zip(pd.DataFrame(d1['teams'])['id'],pd.DataFrame(d1['teams'])['name']))
     players = dict(zip(bigTable['id'],bigTable['full_name']))
     teamplayers = dict(zip(bigTable['id'],bigTable['team']))
 
-    #p4 = requests.get(url4)
     for j in range(6):
         try:
             p4 = requests.get(url4)
             break
         except Exception as e:
             print(e)
-    #page4 = BeautifulSoup(p4.text)
-    #data4 = str(page4.p)[3:-4]
+
     d4 = json.loads(p4.text)
     Fixtures = pd.DataFrame(d4)
-    Fixtures.to_csv(Path('in/fplfixtures.csv'))
+    #Fixtures.to_csv(Path('in/fplfixtures.csv'))
     
     firstr = len(Fixtures)+1
     lastr = 0
@@ -101,25 +97,43 @@ def inputFPL():
         d = json.loads(p.text)
         dd = pd.DataFrame(d['history'])
         Table = Table.append(dd, ignore_index=True)
-    Table.to_csv(Path('in/TheTable.csv'))
+    #Table.to_csv(Path('in/TheTable.csv'))
     Table['threat'] = pd.to_numeric(Table['threat'])
     Table['creativity'] = pd.to_numeric(Table['creativity'])
     Table['team'] = [teamplayers[Table.at[i,'element']] for i in Table.index]
 
+    
+    
+    
+    
+    Teams = pd.DataFrame()
+    Teams['id'] = pd.DataFrame(d1['teams'])['id']
+    Teams['Teams'] = pd.DataFrame(d1['teams'])['name']
+    Teams['XXX Target number XXX'] = np.zeros(len(Teams))
+    Teams['Matches'] = [len(Fixtures[Fixtures['finished']&((Fixtures['team_a']==i)|(Fixtures['team_h']==i))])                                   for i in range(1,len(Teams)+1)]
 
 
+    Players = pd.DataFrame()
+    Players['id'] = bigTable['id']
+    Players['Name'] = bigTable['full_name']
+    Players['Team number'] = [bigTable[bigTable['id'] == i]['team'].sum() for i in Players['id']]
+    Players['Team'] = [dict(zip(pd.DataFrame(d1['teams'])['id'],pd.DataFrame(d1['teams'])['name']))                       [Players.at[i,'Team number']] for i in Players.index]
+    Players['Team games'] = [Teams.at[Players.at[i,'Team number']-1,'Matches'] for i in Players.index]
+    Players['Played'] = [len(Table[(Table['element']==i)&(Table['minutes']>0)])                             for i in Players['id']]
+
+    
+    
+    
+    
     Gameweeks = pd.DataFrame()
-    for i in range(1,2*team_number - 1):
+    for i in range(1,2*len(Teams) - 1):
         url = "https://fantasy.premierleague.com/api/event/" + str(i) + "/live/"
-        #p = requests.get(url)
         for j in range(6):
             try:
                 p = requests.get(url)
                 break
             except Exception as e:
                 print(e)
-        #page = BeautifulSoup(p.text)
-        #data = str(page.p)[3:-4]
         d = json.loads(p.text)
         nexTour = pd.DataFrame(d['elements'])
 
@@ -129,15 +143,12 @@ def inputFPL():
             nt1['gameweek'] = i
             nt1['fixture'] = ''
             for j in nexTour.index:
-                #if nexTour.at[j,'explain']==[]:
-                #    nt1.at[j, 'fixture'] = ''
                 if len(nexTour.at[j,'explain'])==1:
                     nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][0]['fixture']
                 if len(nexTour.at[j,'explain'])==2:
                     nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][1]['fixture']
                     newline = nt1.loc[j].copy()
                     newline['fixture'] = nexTour.at[j,'explain'][0]['fixture']
-                    #print(newline)
                     nt1 = nt1.append(newline, ignore_index=True)
                 if len(nexTour.at[j,'explain'])==3:
                     nt1.at[j, 'fixture'] = nexTour.at[j,'explain'][2]['fixture']
@@ -145,14 +156,10 @@ def inputFPL():
                     newline2 = nt1.loc[j].copy()
                     newline1['fixture'] = nexTour.at[j,'explain'][1]['fixture']
                     newline2['fixture'] = nexTour.at[j,'explain'][0]['fixture']
-                    #print(newline1, newline2)
                     nt1 = nt1.append(newline1, ignore_index=True)
                     nt1 = nt1.append(newline2, ignore_index=True)
                 if len(nexTour.at[j,'explain'])>3:
                     print('Too many matches in Gameweek')
-            #nt1['fixture'] = [nexTour.at[j,'explain'][0]['fixture'] if not nexTour.at[j,'explain']==[] \
-            #                  else '' for j in nexTour.index]
-            #nt1.index = nt1['gameweek']*1000+nt1['id']
             Gameweeks = Gameweeks.append(nt1, ignore_index=True)
             print(i)
 
@@ -181,13 +188,19 @@ def inputFPL():
 
     del Gameweeks['team_a']
     del Gameweeks['team_h']
+    
 
+    Table.to_csv(Path('in/Table.csv'), index=False)
+    Fixtures.to_csv(Path('in/Fixtures.csv'), index=False)
+    Teams.to_csv(Path('in/Teams.csv'), index=False)
+    Players.to_csv(Path('in/Players.csv'), index=False)
+    Gameweeks.to_csv(Path('in/fplgameweeks.csv'), index=False)
+    bigTable.to_csv(Path('in/fpltable.csv'), index=False)
 
-    Gameweeks.to_csv(Path('in/fplgameweeks.csv'))
-    return d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table
+    return Table, Fixtures, Teams, Players
 
 if __name__ == '__main__':
-    d1,team_number,bigTable,Fixtures,lastGW,Gameweeks,teams,players,teamplayers,Table = inputFPL()
+    Table, Fixtures, Teams, Players = inputFPL()
     display(Table)
 
 
