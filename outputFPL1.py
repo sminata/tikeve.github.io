@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
+# In[6]:
 
 
 import constti
@@ -13,15 +13,16 @@ import pandas as pd
 import json
 import numpy as np
 from pathlib import Path
-from inputFPL1 import inputFPL
+
 
 #Table, Fixtures, Teams, Players = inputFPL()
-def outputFPL():
+def outputFPL(source="FPL"):
     
-    Table = pd.read_csv('in/Table.csv')
+    Table = pd.read_csv('in/Table_'+source+'.csv')
     Fixtures = pd.read_csv('in/Fixtures.csv')
     Teams = pd.read_csv('in/Teams.csv')
-    Players = pd.read_csv('in/Players.csv')
+    Players = pd.read_csv('in/Players.csv')  
+    del Players['web_name']
     
     #Teams in Premier League
     team_number = len(Teams)
@@ -297,74 +298,73 @@ def outputFPL():
     TeamThreat.sort_values('Threat av', ascending = False, inplace = True)
     TeamThreat.index = np.arange(1, len(TeamThreat) + 1)
     TeamThreat = Brr_functions.no_lists(TeamThreat)
-    TeamThreat.to_csv(Path('out/TeamThreat.csv'))
+    TeamThreat.to_csv(Path('out/' + source + '/TeamThreat.csv'))
 
     del TeamCreativity['id']
     TeamCreativity.sort_values('Creativity av', ascending = False, inplace = True)
     TeamCreativity.index = np.arange(1, len(TeamCreativity) + 1)
     TeamCreativity = Brr_functions.no_lists(TeamCreativity)
-    TeamCreativity.to_csv(Path('out/TeamCreativity.csv'))
+    TeamCreativity.to_csv(Path('out/' + source + '/TeamCreativity.csv'))
 
     del TableDefence['id']
     TableDefence.sort_values('Threat allowed av', ascending = True, inplace = True)
     TableDefence.index = np.arange(1, len(TableDefence) + 1)
     TableDefence = Brr_functions.no_lists(TableDefence)
-    TableDefence.to_csv(Path('out/TableDefence.csv'))
+    TableDefence.to_csv(Path('out/' + source + '/TableDefence.csv'))
 
     del TeamThreatAd['id']
     TeamThreatAd.sort_values('Threat av adj', ascending = False, inplace = True)
     TeamThreatAd.index = np.arange(1, len(TeamThreatAd) + 1)
     TeamThreatAd = Brr_functions.no_lists(TeamThreatAd)
-    TeamThreatAd.to_csv(Path('out/TeamThreatAd.csv'))
+    TeamThreatAd.to_csv(Path('out/' + source + '/TeamThreatAd.csv'))
 
     del TeamCreativityAd['id']
     TeamCreativityAd.sort_values('Creativity av adj', ascending = False, inplace = True)
     TeamCreativityAd.index = np.arange(1, len(TeamCreativityAd) + 1)
     TeamCreativityAd = Brr_functions.no_lists(TeamCreativityAd)
-    TeamCreativityAd.to_csv(Path('out/TeamCreativityAd.csv'))
+    TeamCreativityAd.to_csv(Path('out/' + source + '/TeamCreativityAd.csv'))
 
     del TableDefenceAd['id']
     TableDefenceAd.sort_values('Threat allowed av adj', ascending = True, inplace = True)
     TableDefenceAd.index = np.arange(1, len(TableDefenceAd) + 1)
     TableDefenceAd = Brr_functions.no_lists(TableDefenceAd)
-    TableDefenceAd.to_csv(Path('out/TableDefenceAd.csv'))
+    TableDefenceAd.to_csv(Path('out/' + source + '/TableDefenceAd.csv'))
 
     del TableTeams['id']
     TableTeams.sort_values('Threat adjusted', ascending = False, inplace = True)
     TableTeams.index = np.arange(1, len(TableTeams) + 1)
-    TableTeams.to_csv(Path('out/TableTeams.csv'))
+    TableTeams.to_csv(Path('out/' + source + '/TableTeams.csv'))
 
     del PlayerThreat['id']
     PlayerThreat.sort_values('Threat per fixture', ascending = False, inplace = True)
     PlayerThreat.index = np.arange(1, len(Players) + 1)
     PlayerThreat = Brr_functions.no_lists(PlayerThreat)
-    PlayerThreat.to_csv(Path('out/PlayerThreat.csv'))
+    PlayerThreat.to_csv(Path('out/' + source + '/PlayerThreat.csv'))
 
     del PlayerCreativity['id']
     PlayerCreativity.sort_values('Creativity per fixture', ascending = False, inplace = True)
     PlayerCreativity.index = np.arange(1, len(Players) + 1)
     PlayerCreativity = Brr_functions.no_lists(PlayerCreativity)
-    PlayerCreativity.to_csv(Path('out/PlayerCreativity.csv'))
+    PlayerCreativity.to_csv(Path('out/' + source + '/PlayerCreativity.csv'))
 
     del PlayerThreatAd['id']
     del PlayerThreatAd['Team number']
     PlayerThreatAd.sort_values('Threat per fixture adj', ascending = False, inplace = True)
     PlayerThreatAd.index = np.arange(1, len(Players) + 1)
     PlayerThreatAd = Brr_functions.no_lists(PlayerThreatAd)
-    PlayerThreatAd.to_csv(Path('out/PlayerThreatAd.csv'))
+    PlayerThreatAd.to_csv(Path('out/' + source + '/PlayerThreatAd.csv'))
 
     del PlayerCreativityAd['id']
     del PlayerCreativityAd['Team number']
     PlayerCreativityAd.sort_values('Creativity per fixture adj', ascending = False, inplace = True)
     PlayerCreativityAd.index = np.arange(1, len(Players) + 1)
     PlayerCreativityAd = Brr_functions.no_lists(PlayerCreativityAd)
-    PlayerCreativityAd.to_csv(Path('out/PlayerCreativityAd.csv'))
+    PlayerCreativityAd.to_csv(Path('out/' + source + '/PlayerCreativityAd.csv'))
     
     return TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd, TableTeams,                PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd
 
 if __name__ == '__main__':
-    #Table, Fixtures, Teams, Players = inputFPL()
-    TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd, TableTeams,                PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd = outputFPL()
+    TeamThreat, TeamCreativity, TableDefence, TeamThreatAd, TeamCreativityAd, TableDefenceAd, TableTeams,                PlayerThreat, PlayerCreativity, PlayerThreatAd, PlayerCreativityAd = outputFPL('FPL')
     display(PlayerThreatAd)
 
 

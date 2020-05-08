@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[6]:
+# In[1]:
 
 
 import constti
@@ -12,9 +12,10 @@ import pandas as pd
 import json
 import numpy as np
 from pathlib import Path
+import unicodedata
 
-def inputFPL():
-    
+#def inputFPL():
+if 1:    
     url1 = "https://fantasy.premierleague.com/api/bootstrap-static/"
     url2 = "https://fantasy.premierleague.com/api/entry/698498/history/"
     url3 = "https://fantasy.premierleague.com/api/event/6/live/"
@@ -29,13 +30,7 @@ def inputFPL():
             a = Fixtures[Fixtures['id']==n]['finished']
             return a.bool()
     
-
-    for j in range(6):
-        try:
-            p1 = requests.get(url1)
-            break
-        except Exception as e:
-            print(e)    
+    p1 = constti.long_request(url1)  
 
     data1 = p1.text
     
@@ -58,14 +53,8 @@ def inputFPL():
     teams = dict(zip(pd.DataFrame(d1['teams'])['id'],pd.DataFrame(d1['teams'])['name']))
     players = dict(zip(bigTable['id'],bigTable['full_name']))
     teamplayers = dict(zip(bigTable['id'],bigTable['team']))
-
-    for j in range(6):
-        try:
-            p4 = requests.get(url4)
-            break
-        except Exception as e:
-            print(e)
-
+    
+    p4 = constti.long_request(url4) 
     d4 = json.loads(p4.text)
     Fixtures = pd.DataFrame(d4)
     #Fixtures.to_csv(Path('in/fplfixtures.csv'))
@@ -88,12 +77,7 @@ def inputFPL():
     Table = pd.DataFrame()
     for i in bigTable['id']:
         url = 'https://fantasy.premierleague.com/api/element-summary/'+str(i)+'/'
-        for j in range(6):
-            try:
-                p = requests.get(url)
-                break
-            except Exception as e:
-                print(e)
+        p = constti.long_request(url)
         d = json.loads(p.text)
         dd = pd.DataFrame(d['history'])
         Table = Table.append(dd, ignore_index=True)
@@ -115,7 +99,8 @@ def inputFPL():
 
     Players = pd.DataFrame()
     Players['id'] = bigTable['id']
-    Players['Name'] = bigTable['full_name']
+    Players['Name'] = constti.strip_accents_pdlist(pd.DataFrame(bigTable['full_name']))
+    Players['web_name'] = constti.strip_accents_pdlist(pd.DataFrame(bigTable['web_name']))
     Players['Team number'] = [bigTable[bigTable['id'] == i]['team'].sum() for i in Players['id']]
     Players['Team'] = [dict(zip(pd.DataFrame(d1['teams'])['id'],pd.DataFrame(d1['teams'])['name']))                       [Players.at[i,'Team number']] for i in Players.index]
     Players['Team games'] = [Teams.at[Players.at[i,'Team number']-1,'Matches'] for i in Players.index]
@@ -128,12 +113,7 @@ def inputFPL():
     Gameweeks = pd.DataFrame()
     for i in range(1,2*len(Teams) - 1):
         url = "https://fantasy.premierleague.com/api/event/" + str(i) + "/live/"
-        for j in range(6):
-            try:
-                p = requests.get(url)
-                break
-            except Exception as e:
-                print(e)
+        p = constti.long_request(url) 
         d = json.loads(p.text)
         nexTour = pd.DataFrame(d['elements'])
 
@@ -190,14 +170,14 @@ def inputFPL():
     del Gameweeks['team_h']
     
 
-    Table.to_csv(Path('in/Table.csv'), index=False)
+    Table.to_csv(Path('in/Table_FPL.csv'), index=False)
     Fixtures.to_csv(Path('in/Fixtures.csv'), index=False)
     Teams.to_csv(Path('in/Teams.csv'), index=False)
     Players.to_csv(Path('in/Players.csv'), index=False)
     Gameweeks.to_csv(Path('in/fplgameweeks.csv'), index=False)
     bigTable.to_csv(Path('in/fpltable.csv'), index=False)
 
-    return Table, Fixtures, Teams, Players
+    #return Table, Fixtures, Teams, Players
 
 if __name__ == '__main__':
     Table, Fixtures, Teams, Players = inputFPL()
