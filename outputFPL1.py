@@ -5,7 +5,7 @@
 
 
 import constti
-import inputFPL1
+#import inputFPL1
 import Brr_functions
 from bs4 import BeautifulSoup
 import requests
