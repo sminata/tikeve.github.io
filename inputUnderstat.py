@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[21]:
+# In[1]:
 
 
 from bs4 import BeautifulSoup
@@ -194,6 +194,7 @@ Table_Understat['threat']  = [100*float(Table_Understat['threat'][i]) for i in r
 Table_Understat = constti.change_column_name(Table_Understat, 'xA', 'creativity')
 Table_Understat['creativity']  = [100*float(Table_Understat['creativity'][i]) for i in range(len(Table_Understat))]
 Table_Understat = constti.change_column_name(Table_Understat, 'player_id', 'Understat_id')
+Table_Understat = constti.change_column_name(Table_Understat, 'time', 'minutes')
 
 Table_Understat.to_csv(Path('in/Table_Understat.csv'), index=False)
 Name_Dictionary.to_csv(Path('in/Name_Dictionary.csv'), index=False)

@@ -11,11 +11,12 @@ def long_request(url):
     import requests
     for j in range(6):
         try:
-            p1 = requests.get(url)
-            break
+            p = requests.get(url)
+            return p
+            #break
         except Exception as e:
             print(e)
-    return p1
+    return CAN_NOT_CONNECT
 
 # 2. Checks if list has the same elements
 def Doubles(a):
