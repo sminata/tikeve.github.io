@@ -4,6 +4,8 @@
 # In[1]:
 
 
+import pandas as pd
+import numpy as np
 #NaNs to zeros
 def toint(a):
     if np.isnan(a):
@@ -17,6 +19,14 @@ def noZ(a):
         if b[i] == 0:
             b[i]=1
     return b
+
+#Kills unfinished matches
+def is_finished(n):
+    if n=='':
+        return False
+    else:
+        a = Fixtures[Fixtures['id']==n]['finished']
+        return a.bool()
 
 #removes lists from table adding new column instead
 def no_lists(t):
@@ -42,4 +52,10 @@ def no_lists(t):
                     table.at[i,j+'*'] = table.at[i,j][1]
                     table.at[i,j]=table.at[i,j][0]
     return table
+
+
+# In[ ]:
+
+
+
 

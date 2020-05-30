@@ -58,14 +58,20 @@ def change_column_name(Table, col_name, new_col_name):
     temp_Table.columns = temp
     return temp_Table
 
+# 7. Finds differences between the tables
+def differences(A, B):
+    df = (A == B)
+    #df = Compare.copy()
+    for i in df.index:
+        if df.loc[i].sum() == len(df.columns):
+            df = df.drop(i)
+    for j in df.columns:
+        if df[j].sum() == len(df):
+            del df[j]
+    return df
+
 if __name__=="__main__":
     print('Hello')
     p = long_request('http://google.com')
     print(p.text)
-
-
-# In[ ]:
-
-
-
 
